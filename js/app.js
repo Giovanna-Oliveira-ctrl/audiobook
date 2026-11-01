@@ -25,6 +25,8 @@ import storageView from './views/storage.js';
 import statsView from './views/stats.js';
 import installView from './views/install.js';
 import playlistView from './views/playlists.js';
+import convertView, { conversionsView } from './views/convert.js';
+import { loadConversions } from './conversion.js';
 
 route('/inicio', home, { nav: 'inicio' });
 route('/biblioteca', library, { nav: 'biblioteca' });
@@ -39,6 +41,8 @@ route('/configuracoes', settings, { nav: 'configuracoes' });
 route('/armazenamento', storageView, { nav: 'configuracoes' });
 route('/estatisticas', statsView, { nav: 'estatisticas' });
 route('/instalar', installView, { nav: 'configuracoes' });
+route('/converter', convertView, { nav: 'converter' });
+route('/conversoes', conversionsView, { nav: 'converter' });
 route('/player', () => {}, { nav: 'player' });
 
 const viewEl = document.getElementById('view');
@@ -192,6 +196,7 @@ async function boot() {
   startRouter(onRoute);
   document.body.classList.add('ready');
   registerServiceWorker();
+  loadConversions().catch((err) => console.warn('[app] conversões', err));
 }
 
 boot();

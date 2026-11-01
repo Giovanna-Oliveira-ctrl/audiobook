@@ -129,6 +129,7 @@ function welcome() {
     h('p', {}, 'Importe arquivos de áudio do seu dispositivo. Eles ficam guardados aqui mesmo — dá para ouvir em modo avião, com a tela bloqueada e usando outros apps.'),
     h('div', { class: 'welcome-actions' },
       button('Importar audiolivro', { icon: 'upload', variant: 'primary', onClick: () => navigate('/importar') }),
+      button('Converter ebook em áudio', { icon: 'bookOpen', variant: 'ghost', onClick: () => navigate('/converter') }),
       button('Criar livro de demonstração', { icon: 'sparkles', variant: 'ghost', onClick: (e) => createDemoBook(e.currentTarget) })),
     h('ul', { class: 'welcome-points' },
       h('li', {}, icon('wifiOff', 20), h('span', {}, h('strong', {}, 'Offline de verdade. '), 'Áudio e progresso ficam no armazenamento local do navegador.')),

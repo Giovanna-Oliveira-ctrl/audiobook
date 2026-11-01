@@ -249,6 +249,7 @@ class Player {
     else if (!(this.playlist && state.playlists.get(this.playlist.id)?.bookIds.includes(bookId))) this.playlist = null;
     this.sessionCounted = false;
     this.autoSleepArmed = true;
+    this.waitingForChapter = false;
     this.releasePreload();
     if (!this.silentActive) this.loadedAudioId = null;
     repo.setSession({ lastBookId: bookId }).catch(() => {});
@@ -260,6 +261,7 @@ class Player {
     const c = this.chapters[index];
     if (!c) return false;
     const token = ++this.chapterToken;
+    this.waitingForChapter = false;
     this.index = index;
     this.wantPlay = autoplay;
     const abs = (c.start || 0) + Math.max(0, position);
@@ -393,6 +395,11 @@ class Player {
       return;
     }
     this.index = idx;
+    if (this.waitingForChapter && this.chapters.length > idx + 1) {
+      this.waitingForChapter = false;
+      await this.loadChapter(idx + 1, 0, true);
+      return;
+    }
     if (this.chapters[idx].audioId !== this.loadedAudioId) {
       this.loadedAudioId = null;
       await this.loadChapter(idx, pos, active);
@@ -412,6 +419,11 @@ class Player {
     this.wantPlay = true;
     if (!a.getAttribute('src') || this.silentActive) {
       this.loadChapter(this.index, this.position, true);
+      return;
+    }
+    if (this.waitingForChapter) {
+      this.wantPlay = false;
+      this.toast('O próximo capítulo ainda está sendo convertido. Ele começa sozinho quando ficar pronto.');
       return;
     }
     // Livro terminado: recomeçar do início.
@@ -678,6 +690,15 @@ class Player {
   async finishBook() {
     const book = this.book;
     if (!book) return;
+    if (repo.getBook(book.id)?.conversion) {
+      // Livro ainda sendo convertido: aguarda o próximo capítulo em vez de concluir.
+      this.waitingForChapter = true;
+      this.wantPlay = false;
+      this.save({ force: true });
+      this.toast('Você chegou ao último capítulo convertido. O próximo começa sozinho assim que ficar pronto.');
+      this.emitState();
+      return;
+    }
     if (this.sleep.mode === 'chapter') this.sleepDone();
     this.wantPlay = false;
     this.save({ force: true });

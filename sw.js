@@ -14,7 +14,7 @@
  */
 
 // @generated-start
-const VERSION = '2026-11-01-4ea84ecd';
+const VERSION = '2026-11-01-ed51bfb0';
 const ASSETS = [
   './',
   './index.html',
@@ -29,9 +29,12 @@ const ASSETS = [
   './js/audio-probe.js',
   './js/backup.js',
   './js/components.js',
+  './js/conversion.js',
   './js/covers.js',
   './js/db.js',
   './js/demo.js',
+  './js/ebook/parse.js',
+  './js/ebook/zip.js',
   './js/icons.js',
   './js/metadata.js',
   './js/player.js',
@@ -42,8 +45,11 @@ const ASSETS = [
   './js/sortable.js',
   './js/state.js',
   './js/theme.js',
+  './js/tts/engine.js',
+  './js/tts/tts-worker.js',
   './js/ui.js',
   './js/utils.js',
+  './js/views/convert.js',
   './js/views/details.js',
   './js/views/favorites.js',
   './js/views/history.js',
@@ -145,6 +151,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(appShell(req));
     return;
   }
+  if (url.pathname.includes('/vendor/')) {
+    event.respondWith(engineFile(req));
+    return;
+  }
   event.respondWith(cacheFirst(req));
 });
 
@@ -174,6 +184,18 @@ async function cacheFirst(req) {
   } catch {
     return new Response('', { status: 504, statusText: 'Offline' });
   }
+}
+
+/* Motor de voz e leitor de PDF (pasta vendor/): baixados sob demanda e guardados num cache
+ * próprio, separado da interface — atualizações do app não os apagam. */
+const ENGINE_CACHE = 'audiobook-engine-v1';
+async function engineFile(req) {
+  const cache = await caches.open(ENGINE_CACHE);
+  const hit = await cache.match(req, { ignoreSearch: true });
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok && res.type === 'basic') cache.put(req, res.clone());
+  return res;
 }
 
 /* ---------------- Web Share Target ---------------- */

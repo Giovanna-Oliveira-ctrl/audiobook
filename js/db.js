@@ -11,13 +11,14 @@
  *  playlists  { id, name, description, bookIds[] }
  *  stats      { date: 'YYYY-MM-DD', seconds, books: { [bookId]: seconds } }
  *  settings   { key, value }   (key: 'app' | 'session')
+ *  conversions { id, status, meta, chapters[{ title, paragraphs, state }], voiceId, bookId, ... }  (v2)
  *
  * O áudio fica no IndexedDB (não no Cache Storage), separado do cache do app:
  * atualizar ou limpar o cache do Service Worker nunca apaga a biblioteca.
  */
 
 const DB_NAME = 'audiobook';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise = null;
 
 export function openDB() {
@@ -61,8 +62,11 @@ function migrate(db, oldVersion) {
     db.createObjectStore('stats', { keyPath: 'date' });
     db.createObjectStore('settings', { keyPath: 'key' });
   }
-  // Exemplo de migração futura:
-  // if (oldVersion < 2) { ... }
+  if (oldVersion < 2) {
+    // v2: conversões de ebook em audiolivro (texto dos capítulos + estado de cada um)
+    db.createObjectStore('conversions', { keyPath: 'id' });
+  }
+  // Próximas migrações: if (oldVersion < 3) { ... }
 }
 
 async function run(storeNames, mode, work) {
@@ -125,5 +129,5 @@ export function batch(ops) {
 }
 
 export const ALL_STORES = [
-  'books', 'chapters', 'audio', 'covers', 'progress', 'bookmarks', 'history', 'playlists', 'stats', 'settings',
+  'books', 'chapters', 'audio', 'covers', 'progress', 'bookmarks', 'history', 'playlists', 'stats', 'settings', 'conversions',
 ];

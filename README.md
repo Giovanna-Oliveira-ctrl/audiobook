@@ -18,6 +18,8 @@ segundo plano** e **controles na tela de bloqueio**.
 - Exportação/importação de dados (JSON) e **backup completo com áudio** (`.audiobook`)
 - Tema claro, escuro (tons quentes, confortável à noite) e automático
 - Livro de demonstração gerado no próprio aparelho (áudio sintetizado, sem direitos autorais)
+- **Converter ebook em audiolivro:** EPUB, PDF, TXT, Markdown ou HTML lidos por uma **voz neural em português**
+  gerada no próprio aparelho (sem servidor), com os capítulos salvos em MP3 na biblioteca
 
 ---
 
@@ -45,6 +47,11 @@ js/
   demo.js               Audiolivro de demonstração sintetizado
   backup.js             Exportação/importação (JSON e backup completo)
   pwa.js                Service Worker, instalação, armazenamento persistente, arquivos compartilhados
+  conversion.js         Fila de conversões ebook → audiolivro (retomada, tela ligada)
+  ebook/parse.js        Leitura de EPUB, PDF, TXT, Markdown e HTML (capítulos, autor, capa)
+  ebook/zip.js          Leitor de ZIP nativo (DecompressionStream) para EPUB
+  tts/engine.js         Download/cache do motor e das vozes, comunicação com o worker
+  tts/tts-worker.js     Texto → fonemas (espeak-ng) → voz neural Piper (ONNX) → MP3
   router.js             Rotas por hash (#/biblioteca, #/livro/:id...)
   ui.js, icons.js       Utilitários de interface, modais, toasts e ícones SVG
   components.js         Cartões, listas de capítulos, barras de progresso...
@@ -52,18 +59,21 @@ js/
   sortable.js           Arrastar para reordenar (mouse e toque)
   theme.js, state.js, utils.js
   views/                Uma tela por arquivo: home, library, details, player-view (player + mini player),
-                        import, favorites, history, settings, storage, stats, install, playlists
+                        import, convert, favorites, history, settings, storage, stats, install, playlists
+vendor/                 Motor de voz e leitor de PDF (baixados só ao converter) — ver vendor/LICENSES.md
 icons/                  Ícones do app (PNG, maskable, apple-touch-icon, favicon SVG)
 tools/
   update-sw.mjs         Atualiza a lista de arquivos e a versão do Service Worker
   render-icons.mjs      Gera os PNGs dos ícones a partir dos SVGs
   test-e2e.mjs          Teste automatizado ponta a ponta (inclui modo offline)
+  test-convert.mjs      Teste da conversão de ebook em audiolivro (EPUB e PDF, inclui offline)
 ```
 
 Telas (rotas): Início `#/inicio` · Biblioteca `#/biblioteca` · Player `#/player` · Detalhes `#/livro/:id` ·
 Importar `#/importar` · Editar `#/editar/:id` · Favoritos `#/favoritos` · Histórico `#/historico` ·
 Configurações `#/configuracoes` · Armazenamento `#/armazenamento` · Estatísticas `#/estatisticas` ·
-Playlist `#/playlist/:id` · Instalar e compatibilidade `#/instalar`.
+Playlist `#/playlist/:id` · Instalar e compatibilidade `#/instalar` · Converter ebook `#/converter` ·
+Conversões `#/conversoes`.
 
 ---
 
@@ -131,7 +141,39 @@ e importados.
 
 ---
 
-## 5. Como funciona a reprodução em segundo plano
+## 5. Converter ebook em audiolivro
+
+Menu **Ebook → áudio** (ou Importar › “Tem um ebook?”).
+
+1. **Selecionar ebook:** EPUB, PDF com texto, TXT, Markdown ou HTML. O app detecta título, autor, capa e
+   capítulos (pelo sumário do EPUB/PDF, por títulos como “Capítulo 3” ou, sem títulos, em partes de ~30 min).
+   Sumário, direitos autorais e notas vêm desmarcados; os títulos podem ser editados.
+2. **Escolher a voz:** *Faber* (natural, recomendada) ou *Edresson* (mais leve), ambas em português do Brasil.
+   Ajuste o ritmo (calma / normal / ágil) e toque em **Ouvir amostra**.
+3. **Converter:** cada capítulo é gerado e salvo em MP3 na biblioteca **assim que fica pronto**, então dá para
+   começar a ouvir enquanto o resto é convertido. Acompanhe, pause, retome ou cancele em **Conversões**.
+
+**Como funciona (tudo no aparelho, sem servidor):** o espeak-ng (WebAssembly) transforma o texto em
+fonemas, uma voz neural **Piper** (modelo VITS) gera a fala via **ONNX Runtime Web** num Web Worker, e o
+áudio é codificado em MP3 (≈ 20 MB por hora). O resultado é um audiolivro comum: toca offline, em segundo
+plano, com tela bloqueada, marcadores, velocidade etc.
+
+**Primeiro uso:** o motor (≈ 33 MB, servido pelo próprio app) e a voz escolhida (≈ 63 MB, do repositório
+oficial Piper no Hugging Face) são baixados **uma única vez** e ficam no cache offline. Depois disso a
+conversão funciona **em modo avião**. Também é possível **importar uma voz** a partir dos arquivos
+`.onnx` + `.onnx.json`. Vozes e motor podem ser removidos em Configurações › Armazenamento.
+
+**Tempo de conversão:** depende do processador. No computador costuma ser bem mais rápido que a duração do
+áudio; em celulares pode levar de minutos a algumas horas para um livro inteiro. O app mostra o tempo
+estimado, mantém a tela ligada durante a conversão (Wake Lock) e, se o app for fechado, **retoma de onde
+parou** ao reabrir. Dica: converta no computador e leve para o celular com **Backup completo**.
+
+**Limitações:** PDFs escaneados (só imagens) não têm texto; seria preciso OCR. EPUBs com **DRM** (proteção
+de lojas) não podem ser lidos, e o app avisa. A pronúncia é boa, mas não é a de um narrador humano: nomes
+estrangeiros, siglas e números romanos podem soar estranhos. Converta apenas obras que você tem direito de
+usar (domínio público, de sua autoria ou compradas sem DRM, para uso pessoal).
+
+## 6. Como funciona a reprodução em segundo plano
 
 O app não simula nada visualmente. Ele usa os mecanismos reais do navegador e do sistema:
 
@@ -158,7 +200,7 @@ O app não simula nada visualmente. Ele usa os mecanismos reais do navegador e d
 
 ---
 
-## 6. Arquitetura offline-first
+## 7. Arquitetura offline-first
 
 - **Interface:** o `sw.js` pré-carrega todos os arquivos do app (HTML, CSS, JS, ícones, manifest) num
   cache versionado (`audiobook-shell-<versão>`). A navegação é respondida pelo `index.html` em cache. Os
@@ -180,7 +222,7 @@ progresso, temporizador, configurações, favoritos, histórico, busca, importa�
 
 ---
 
-## 7. Limitações por plataforma (sem promessas que o navegador não garante)
+## 8. Limitações por plataforma (sem promessas que o navegador não garante)
 
 | Tema | Android (Chrome) | iPhone/iPad (iOS 16.4+) |
 |---|---|---|
@@ -203,7 +245,7 @@ publicar via **Trusted Web Activity**. Interface, regras e armazenamento são re
 
 ---
 
-## 8. Teste obrigatório de funcionamento offline
+## 9. Teste obrigatório de funcionamento offline
 
 ### Procedimento manual (no celular)
 
@@ -240,17 +282,28 @@ python3 -m http.server 8765
 node tools/test-e2e.mjs http://localhost:8765/
 ```
 
-Resultado da última execução: **29 verificações OK, 0 falhas**. Bloqueio de tela e controles do sistema
+Resultado da última execução: **29 verificações OK, 0 falhas**.
+
+**Conversão de ebooks:** `tools/test-convert.mjs` gera um EPUB (com capa, sumário e dois capítulos no mesmo
+arquivo) e um PDF (com sumário), importa uma voz Piper de arquivo, baixa o motor, converte, toca o resultado
+e repete a conversão do PDF **sem internet**:
+
+```bash
+node tools/test-convert.mjs --voz /caminho/pt_BR-faber-medium.onnx
+```
+
+O arquivo `.onnx.json` da voz deve estar ao lado do `.onnx`. Última execução: **15 verificações OK, 0 falhas**. Bloqueio de tela e controles do sistema
 não podem ser automatizados num navegador headless: use o procedimento manual acima no aparelho.
 
 ---
 
-## 9. Atalhos de teclado (computador)
+## 10. Atalhos de teclado (computador)
 
 `Espaço`/`K` reproduzir/pausar · `←`/`J` −15 s · `→`/`L` +30 s · `Shift+←/→` capítulo anterior/próximo ·
 `,` `.` velocidade − / + · `B` marcador · `F` abrir/fechar o player.
 
-## 10. Privacidade
+## 11. Privacidade
 
-Tudo fica no seu dispositivo. O app não faz requisições a servidores externos, não usa analytics e não
-envia seus arquivos para lugar nenhum.
+Tudo fica no seu dispositivo. O app não usa analytics e não envia seus arquivos nem o texto dos seus
+livros para lugar nenhum: a conversão em voz acontece no próprio aparelho. A única conexão externa é o
+download opcional de uma voz Piper (Hugging Face), feito uma vez quando você escolhe converter um ebook.

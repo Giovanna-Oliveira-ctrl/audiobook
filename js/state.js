@@ -16,6 +16,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   skipBack: 15,
   skipForward: 30,
   installDismissed: false,
+  ttsVoice: 'pt_BR-faber-medium', // voz usada na conversão de ebooks
+  ttsLengthScale: 1, // ritmo da fala (maior = mais lento)
 });
 
 export const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];

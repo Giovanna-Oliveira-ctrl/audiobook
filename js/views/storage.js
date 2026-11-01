@@ -7,12 +7,13 @@ import { back } from '../router.js';
 import { coverEl, pageHeader, emptyState } from '../components.js';
 import { storageEstimate, isPersisted, requestPersistence, appCacheInfo, swMessage, platform } from '../pwa.js';
 import { formatBytes, formatDuration, plural } from '../utils.js';
+import { ttsStorage, listVoices, deleteVoice, removeEngine } from '../tts/engine.js';
 
 export default function storageView(root, { query }) {
-  let estimate = null, persisted = null, cache = null;
+  let estimate = null, persisted = null, cache = null, ttsInfo = null, voices = [];
 
   async function refresh() {
-    [estimate, persisted, cache] = await Promise.all([storageEstimate(), isPersisted(), appCacheInfo().catch(() => null)]);
+    [estimate, persisted, cache, ttsInfo, voices] = await Promise.all([storageEstimate(), isPersisted(), appCacheInfo().catch(() => null), ttsStorage().catch(() => null), listVoices().catch(() => [])]);
     draw();
   }
 
@@ -26,7 +27,8 @@ export default function storageView(root, { query }) {
     const quota = estimate?.quota || 0;
     const used = estimate?.usage || 0;
     const appBytes = cache?.bytes || 0;
-    const others = Math.max(0, used - u.audio - u.covers - appBytes);
+    const ttsBytes = (ttsInfo?.engine || 0) + (ttsInfo?.voices || 0);
+    const others = Math.max(0, used - u.audio - u.covers - appBytes - ttsBytes);
     const free = quota ? Math.max(0, quota - used) : null;
     const books = repo.allBooks().sort((a, b) => (b.audioSize || 0) - (a.audioSize || 0));
     const p = platform();
@@ -57,11 +59,13 @@ export default function storageView(root, { query }) {
         meter('Áudio', u.audio, quota, 'seg-audio'),
         meter('Capas', u.covers, quota, 'seg-covers'),
         meter('App', appBytes, quota, 'seg-app'),
+        meter('Vozes', ttsBytes, quota, 'seg-tts'),
         meter('Outros', others, quota, 'seg-other')),
       h('dl', { class: 'storage-legend' },
         legend('seg-audio', 'Áudio dos livros', formatBytes(u.audio)),
         legend('seg-covers', 'Capas', formatBytes(u.covers)),
         legend('seg-app', 'Cache do app (interface)', cache ? `${formatBytes(appBytes)} · ${cache.files} arquivos` : '—'),
+        ttsBytes > 0 && legend('seg-tts', 'Motor e vozes de leitura', formatBytes(ttsBytes)),
         quota > 0 && legend('seg-other', 'Dados e índices', formatBytes(others)),
         quota > 0 && legend('seg-free', 'Disponível', formatBytes(free))),
       h('div', { class: 'storage-counts' },
@@ -115,9 +119,39 @@ export default function storageView(root, { query }) {
                 }, icon('trash', 20)))))
         : emptyState({ icon: 'library', title: 'Biblioteca vazia', text: 'Nenhum audiolivro armazenado neste dispositivo.' }));
 
+    const downloaded = voices.filter((v) => v.downloaded);
+    const voicesBox = (ttsBytes > 0 || downloaded.length) && h('section', { class: 'settings-group' },
+      h('h2', { class: 'settings-title' }, 'Vozes para converter ebooks'),
+      h('div', { class: 'settings-card manage-list' },
+        h('div', { class: 'manage-row' },
+          h('span', { class: 'setting-icon' }, icon('layers', 20)),
+          h('span', { class: 'manage-text' }, h('strong', {}, 'Motor de voz'), h('span', { class: 'muted small' }, `${formatBytes(ttsInfo?.engine || 0)} · necessário para converter; os audiolivros já gerados tocam sem ele`)),
+          (ttsInfo?.engine || 0) > 0 && h('button', {
+            type: 'button', class: 'icon-btn icon-btn--danger', 'aria-label': 'Remover motor de voz', title: 'Remover',
+            onClick: async () => {
+              if (await confirmDialog({ title: 'Remover o motor de voz?', message: 'Seus audiolivros continuam tocando normalmente. Para converter outro ebook, o motor será baixado de novo.', confirmLabel: 'Remover', danger: true })) {
+                await removeEngine();
+                refresh();
+              }
+            },
+          }, icon('trash', 20))),
+        downloaded.map((v) =>
+          h('div', { class: 'manage-row' },
+            h('span', { class: 'setting-icon' }, icon('headphones', 20)),
+            h('span', { class: 'manage-text' }, h('strong', {}, `Voz ${v.name}`), h('span', { class: 'muted small' }, `${formatBytes(v.size)} · ${v.custom ? 'importada' : 'português do Brasil'}`)),
+            h('button', {
+              type: 'button', class: 'icon-btn icon-btn--danger', 'aria-label': `Remover voz ${v.name}`, title: 'Remover',
+              onClick: async () => {
+                if (await confirmDialog({ title: `Remover a voz ${v.name}?`, message: 'Os audiolivros já convertidos não são afetados.', confirmLabel: 'Remover', danger: true })) {
+                  await deleteVoice(v.id);
+                  refresh();
+                }
+              },
+            }, icon('trash', 20))))));
+
     root.replaceChildren(h('div', { class: 'page page-storage' },
       pageHeader({ title: 'Armazenamento', subtitle: 'Tudo fica no seu dispositivo (IndexedDB). Nada é apagado sem sua autorização.', back: () => back('/configuracoes') }),
-      persistBox, overview, manage, cacheBox));
+      persistBox, overview, manage, voicesBox, cacheBox));
     if (query.gerenciar) requestAnimationFrame(() => document.getElementById('gerenciar')?.scrollIntoView({ block: 'start' }));
   }
 

@@ -446,7 +446,12 @@ export default function importView(root, { params, query }) {
     }
 
     if (!isEdit && !draft.chapters.length) {
-      root.replaceChildren(h('div', { class: 'page page-import' }, header, dropzone(),
+      root.replaceChildren(h('div', { class: 'page page-import' }, header,
+        h('a', { class: 'link-card link-card--accent', href: '#/converter' },
+          icon('bookOpen', 26),
+          h('span', {}, h('strong', {}, 'Tem um ebook? Transforme em audiolivro'), h('small', {}, 'EPUB, PDF ou TXT lidos por uma voz neural em português, gravados no aparelho.')),
+          icon('chevronRight', 18)),
+        dropzone(),
         h('section', { class: 'import-help' },
           h('h2', { class: 'section-title' }, 'Sem arquivos para testar?'),
           h('p', { class: 'muted' }, 'Crie um audiolivro de demonstração gerado no próprio dispositivo (áudio sintetizado, livre de direitos autorais) para testar capítulos, temporizador e reprodução com a tela bloqueada.'),

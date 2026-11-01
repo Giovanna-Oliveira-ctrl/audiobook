@@ -162,7 +162,7 @@ export async function appCacheInfo() {
   if (!('caches' in self)) return null;
   let bytes = 0, files = 0;
   for (const name of await caches.keys()) {
-    if (!name.startsWith('audiobook-')) continue;
+    if (!name.startsWith('audiobook-') || /engine|voices/.test(name)) continue;
     const cache = await caches.open(name);
     for (const req of await cache.keys()) {
       const res = await cache.match(req);

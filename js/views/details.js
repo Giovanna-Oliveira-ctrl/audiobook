@@ -72,6 +72,13 @@ export default function details(root, { params, query }) {
         ? h('p', { class: 'offline-ok' }, icon('checkCircle', 18), `Disponível offline · ${formatBytes(book.audioSize)} no dispositivo`)
         : null;
 
+    const converting = book.conversion
+      ? h('div', { class: 'notice notice--info' }, icon('sparkles', 22),
+          h('div', {}, h('strong', {}, `Convertendo: ${book.conversion.done} de ${book.conversion.total} capítulos prontos`),
+            h('p', {}, 'Você já pode ouvir os capítulos prontos. Os próximos entram aqui automaticamente.')),
+          h('a', { class: 'btn btn--sm btn--ghost', href: '#/conversoes' }, 'Progresso'))
+      : null;
+
     const synopsis = book.synopsis
       ? (() => {
           const text = h('p', { class: 'synopsis-text clamp' }, book.synopsis);
@@ -150,7 +157,7 @@ export default function details(root, { params, query }) {
           h('p', { class: 'details-meta' }, `${formatDuration(book.totalDuration)} · ${plural(book.chapterCount, 'capítulo', 'capítulos')}`),
           progressBar(book, { showLabel: true, className: 'details-progress' }),
           h('div', { class: 'details-actions' }, playBtn, favBtn, doneBtn),
-          offline)),
+          offline, converting)),
       synopsis,
       h('section', { class: 'detail-section' }, h('div', { class: 'tabs-row' }, tabsEl), tabBody),
       h('section', { class: 'detail-section' }, h('h2', { class: 'section-title' }, 'Informações'),

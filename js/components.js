@@ -78,6 +78,7 @@ export function syncProgressBars(bookId) {
 }
 
 function statusBadge(book) {
+  if (book.conversion) return h('span', { class: 'badge badge--converting' }, icon('sparkles', 13), `${book.conversion.done}/${book.conversion.total}`);
   const p = bookProgress(book);
   if (p.status === 'done') return h('span', { class: 'badge badge--done', title: 'Concluído' }, icon('check', 14), 'Concluído');
   if (p.status === 'new') return h('span', { class: 'badge badge--new' }, 'Novo');
