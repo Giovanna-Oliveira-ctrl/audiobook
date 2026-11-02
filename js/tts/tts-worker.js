@@ -71,7 +71,29 @@ async function loadVoice(voiceId, model, config) {
     executionProviders: ['wasm'],
     graphOptimizationLevel: 'all',
   });
-  voice = { id: voiceId, config };
+  voice = { id: voiceId, config, espeak: ((config.espeak && config.espeak.voice) || 'pt-br').toLowerCase(), remap: false };
+  // Vozes treinadas com outras versões do Piper podem usar outro mapa de fonemas.
+  // Confere com uma frase de teste: se o mapa do .json não bater com o embutido, usa o do .json.
+  const map = config.phoneme_id_map;
+  if (map && Object.keys(map).length) {
+    const probe = await phonemize('ação coração pão ninguém xícara chá jóia lhe nhoque rato carro sol fim', voice.espeak);
+    const rebuilt = idsFromPhonemes(probe.phonemes || [], map);
+    voice.remap = rebuilt.length !== probe.phoneme_ids.length || rebuilt.some((v, i) => v !== probe.phoneme_ids[i]);
+  }
+}
+
+/** Layout do Piper: início (^), pausa (_), [fonema, pausa]..., fim ($). */
+function idsFromPhonemes(phonemes, map) {
+  const one = (k, d) => (map[k] && map[k].length ? map[k] : [d]);
+  const pad = one('_', 0);
+  const ids = [...one('^', 1), ...pad];
+  for (const p of phonemes) {
+    const v = map[p];
+    if (!v) continue;
+    ids.push(...v, ...pad);
+  }
+  ids.push(...one('$', 2));
+  return ids;
 }
 
 /* --------------------------- Texto -> fonemas --------------------------- */
@@ -81,7 +103,10 @@ async function phonemize(text, espeakVoice) {
     lastOutput = null;
     try {
       phonemizer.callMain(['-l', espeakVoice, '--input', JSON.stringify([{ text }]), '--espeak_data', '/espeak-ng-data']);
-      if (lastOutput) return JSON.parse(lastOutput).phoneme_ids || [];
+      if (lastOutput) {
+        const out = JSON.parse(lastOutput);
+        return { phonemes: out.phonemes || [], phoneme_ids: out.phoneme_ids || [] };
+      }
     } catch (err) {
       /* recria o módulo e tenta de novo */
     }
@@ -144,7 +169,7 @@ async function synthesize({ id, paragraphs, lengthScale = 1 }) {
   if (!session || !voice) throw new Error('Voz não carregada.');
   const cfg = voice.config || {};
   const sampleRate = (cfg.audio && cfg.audio.sample_rate) || 22050;
-  const espeakVoice = (cfg.espeak && cfg.espeak.voice) || 'pt-br';
+  const espeakVoice = voice.espeak;
   const inf = cfg.inference || {};
   const scales = Float32Array.from([inf.noise_scale ?? 0.667, (inf.length_scale ?? 1) * lengthScale, inf.noise_w ?? 0.8]);
   const multiSpeaker = (cfg.num_speakers || 0) > 1;
@@ -172,14 +197,16 @@ async function synthesize({ id, paragraphs, lengthScale = 1 }) {
       post({ id, type: 'cancelled' });
       return null;
     }
-    const ids = await phonemize(chunk.text, espeakVoice);
-    if (ids.length) {
+    const ph = await phonemize(chunk.text, espeakVoice);
+    const ids = voice.remap ? idsFromPhonemes(ph.phonemes, cfg.phoneme_id_map) : ph.phoneme_ids;
+    if (ids.length > 2) {
+      const inputs = session.inputNames;
       const feeds = {
         input: new ort.Tensor('int64', BigInt64Array.from(ids, (x) => BigInt(x)), [1, ids.length]),
         input_lengths: new ort.Tensor('int64', BigInt64Array.from([BigInt(ids.length)]), [1]),
-        scales: new ort.Tensor('float32', scales, [3]),
       };
-      if (multiSpeaker) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]), [1]);
+      if (inputs.includes('scales')) feeds.scales = new ort.Tensor('float32', scales, [3]);
+      if (inputs.includes('sid') || multiSpeaker) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]), [1]);
       const out = await session.run(feeds);
       const pcm = out[session.outputNames[0]].data;
       const int16 = new Int16Array(pcm.length);

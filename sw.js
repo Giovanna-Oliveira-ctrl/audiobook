@@ -14,7 +14,7 @@
  */
 
 // @generated-start
-const VERSION = '2026-11-01-ed51bfb0';
+const VERSION = '2026-11-02-499de565';
 const ASSETS = [
   './',
   './index.html',

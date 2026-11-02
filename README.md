@@ -148,8 +148,21 @@ Menu **Ebook → áudio** (ou Importar › “Tem um ebook?”).
 1. **Selecionar ebook:** EPUB, PDF com texto, TXT, Markdown ou HTML. O app detecta título, autor, capa e
    capítulos (pelo sumário do EPUB/PDF, por títulos como “Capítulo 3” ou, sem títulos, em partes de ~30 min).
    Sumário, direitos autorais e notas vêm desmarcados; os títulos podem ser editados.
-2. **Escolher a voz:** *Faber* (natural, recomendada) ou *Edresson* (mais leve), ambas em português do Brasil.
-   Ajuste o ritmo (calma / normal / ágil) e toque em **Ouvir amostra**.
+2. **Escolher a voz** (filtro: todas / femininas / masculinas) e ajustar o ritmo (calma / normal / ágil);
+   toque em **Ouvir amostra** para comparar:
+
+   | Voz | Gênero | Sotaque | Qualidade | Download | Licença |
+   |---|---|---|---|---|---|
+   | **Dii** | Feminina | Português do Brasil | Alta (22 kHz) | ≈ 115 MB | CC BY-NC-SA 4.0 (uso pessoal) |
+   | **Faber** | Masculina | Português do Brasil | Média (22 kHz) | ≈ 63 MB | ver MODEL_CARD |
+   | **Miro** | Masculina | Português do Brasil | Alta (22 kHz) | ≈ 115 MB | CC BY-NC-SA 4.0 (uso pessoal) |
+   | **Edresson** | Masculina | Português do Brasil | Baixa (16 kHz) | ≈ 63 MB | ver MODEL_CARD |
+   | **Dii (Portugal)** | Feminina | Português de Portugal | Alta (22 kHz) | ≈ 115 MB | CC BY-NC-SA 4.0 (uso pessoal) |
+
+   Dii e Miro são da [OpenVoiceOS](https://huggingface.co/OpenVoiceOS); Faber e Edresson do repositório
+   oficial [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). Cada voz é baixada uma vez
+   e pode ser apagada em Configurações › Armazenamento. Para vozes treinadas com outras versões do Piper, o
+   app confere o mapa de fonemas do `.onnx.json` ao carregar e o usa quando difere do padrão.
 3. **Converter:** cada capítulo é gerado e salvo em MP3 na biblioteca **assim que fica pronto**, então dá para
    começar a ouvir enquanto o resto é convertido. Acompanhe, pause, retome ou cancele em **Conversões**.
 

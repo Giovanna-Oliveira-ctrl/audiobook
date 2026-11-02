@@ -11,6 +11,9 @@ Usados somente pela função **Converter ebook em audiolivro**. São baixados pe
 | lamejs | 1.2.1 | Codifica o áudio gerado em MP3 | LGPL-3.0 (biblioteca separada, sem modificações; LAME: https://lame.sourceforge.io) | https://github.com/zhuker/lamejs |
 | PDF.js | 6.5.438 | Extrai o texto de PDFs | Apache-2.0 | https://github.com/mozilla/pdf.js |
 
-**Vozes:** os modelos Piper (por exemplo `pt_BR-faber-medium`) são baixados do repositório oficial
-https://huggingface.co/rhasspy/piper-voices na primeira conversão. Cada voz tem sua própria licença,
-descrita no arquivo `MODEL_CARD` publicado junto do modelo. Confira-a antes de distribuir áudios gerados.
+**Vozes:** baixadas na primeira vez em que são usadas, não fazem parte do repositório.
+- `pt_BR-faber-medium` e `pt_BR-edresson-low`: https://huggingface.co/rhasspy/piper-voices — licença no
+  arquivo `MODEL_CARD` publicado junto de cada modelo.
+- `pt_BR-dii-high` (feminina), `pt_BR-miro-high` e `pt_PT-dii-high` (feminina): OpenVoiceOS
+  (https://huggingface.co/OpenVoiceOS) — **CC BY-NC-SA 4.0**: livres para uso pessoal/não comercial;
+  uso comercial não permitido. Ver https://github.com/OHF-Voice/piper1-gpl/discussions/27.

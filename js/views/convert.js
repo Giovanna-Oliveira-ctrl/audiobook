@@ -86,6 +86,7 @@ export default function convertView(root) {
   let engineReady = false;
   let voiceId = state.settings.ttsVoice || 'pt_BR-faber-medium';
   let lengthScale = state.settings.ttsLengthScale || 1;
+  let voiceFilter = 'all';
   let destroyed = false;
   let sampleAudio = null;
 
@@ -175,18 +176,29 @@ export default function convertView(root) {
   /* ------------------------------ Render ------------------------------ */
 
   function voicePicker() {
+    const shown = voices.filter((v) => voiceFilter === 'all' || v.gender === voiceFilter || v.id === voiceId || (v.custom && voiceFilter === 'all'));
     const list = h('div', { class: 'voice-list', role: 'radiogroup', 'aria-label': 'Voz' },
-      voices.map((v) =>
+      shown.map((v) =>
         h('label', { class: `voice-card ${v.id === voiceId ? 'is-active' : ''}` },
           h('input', { type: 'radio', name: 'voice', value: v.id, checked: v.id === voiceId, onChange: () => { voiceId = v.id; render(); } }),
-          h('span', { class: 'voice-icon' }, icon('headphones', 22)),
+          h('span', { class: `voice-icon ${v.gender === 'Feminina' ? 'is-female' : ''}` }, icon('headphones', 22)),
           h('span', { class: 'voice-text' },
             h('strong', {}, v.name, v.quality && h('small', {}, ` · ${v.quality}`)),
-            h('span', { class: 'muted small' }, v.description)),
+            h('span', { class: 'voice-tags' },
+              v.gender && h('span', { class: `voice-tag ${v.gender === 'Feminina' ? 'is-female' : ''}` }, v.gender),
+              v.accent && h('span', { class: 'voice-tag' }, v.accent)),
+            h('span', { class: 'muted small' }, v.description),
+            v.license && h('span', { class: 'voice-license' }, `Licença ${v.license}`)),
           h('span', { class: `voice-status ${v.downloaded ? 'is-ready' : ''}` },
             v.downloaded ? [icon('checkCircle', 16), 'No aparelho'] : [icon('download', 16), `≈ ${v.sizeMB} MB`]))));
     return h('section', { class: 'convert-section' },
       h('div', { class: 'section-header' }, h('h2', { class: 'section-title' }, 'Voz e ritmo')),
+      segmented(
+        [{ value: 'all', label: 'Todas' }, { value: 'Feminina', label: 'Femininas' }, { value: 'Masculina', label: 'Masculinas' }],
+        voiceFilter,
+        (v) => { voiceFilter = v; render(); },
+        { label: 'Filtrar vozes' },
+      ),
       list,
       h('div', { class: 'voice-tools' },
         segmented(SPEEDS, lengthScale, (v) => { lengthScale = v; render(); }, { label: 'Ritmo da fala' }),
@@ -293,7 +305,7 @@ export default function convertView(root) {
       chapterPicker(),
       h('div', { class: 'form-footer' },
         h('button', { type: 'button', class: 'btn btn--ghost', onClick: () => { stage = 'pick'; parsed = null; render(); } }, 'Trocar'),
-        h('button', { type: 'button', class: 'btn btn--primary btn--lg', onClick: start }, icon('sparkles', 20), h('span', {}, 'Converter em audiolivro')))));
+        h('button', { type: 'button', class: 'btn btn--primary btn--lg', onClick: start }, icon('sparkles', 20), h('span', {}, 'Gerar audiolivro')))));
   }
 
   // Arrastar e soltar

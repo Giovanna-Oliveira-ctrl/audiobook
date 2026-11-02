@@ -363,3 +363,8 @@ body.has-mini .form-footer { bottom: calc(var(--tabbar-h) + var(--mini-h) + var(
 .badge--converting { background: rgba(0, 0, 0, .55); color: #ffd9a6; }
 .error-text { color: var(--danger); }
 .seg-tts { background: #a98bd1; }
+.voice-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+.voice-tag { font-size: .7rem; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
+.voice-tag.is-female, .voice-icon.is-female { background: rgba(201, 104, 150, .16); color: #c25c8c; }
+[data-theme="dark"] .voice-tag.is-female, [data-theme="dark"] .voice-icon.is-female { color: #eda3c4; }
+.voice-license { font-size: .72rem; color: var(--text-3); }

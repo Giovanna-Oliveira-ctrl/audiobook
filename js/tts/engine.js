@@ -26,27 +26,68 @@ const EXTRA_FILES = ['vendor/pdfjs-6.5.438/pdf.min.mjs', 'vendor/pdfjs-6.5.438/p
 const MIME = { js: 'text/javascript', mjs: 'text/javascript', wasm: 'application/wasm', data: 'application/octet-stream' };
 export const ENGINE_SIZE_MB = 33;
 
-const HF = [
-  'https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/',
-  'https://huggingface.co/diffusionstudio/piper-voices/resolve/main/',
+const RHASSPY = (path) => [
+  `https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${path}`,
+  `https://huggingface.co/rhasspy/piper-voices/resolve/main/${path}`,
+  `https://huggingface.co/diffusionstudio/piper-voices/resolve/main/${path}`,
 ];
+const OVOS = (repo, file) => [`https://huggingface.co/OpenVoiceOS/${repo}/resolve/main/${file}`];
+const OVOS_LICENSE = 'CC BY-NC-SA 4.0 — livre para uso pessoal, sem uso comercial';
 
+/* Vozes Piper em português. "dii" e "miro" são da OpenVoiceOS (modelos de alta qualidade, 22 kHz). */
 export const BUILTIN_VOICES = [
+  {
+    id: 'pt_BR-dii-high',
+    name: 'Dii',
+    gender: 'Feminina',
+    accent: 'Português do Brasil',
+    description: 'Voz feminina, alta qualidade.',
+    urls: OVOS('pipertts_pt-BR_dii', 'dii_pt-BR.onnx'),
+    sizeMB: 115,
+    quality: 'Alta (22 kHz)',
+    license: OVOS_LICENSE,
+  },
   {
     id: 'pt_BR-faber-medium',
     name: 'Faber',
-    description: 'Voz masculina em português do Brasil, natural e clara. Recomendada.',
-    path: 'pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx',
+    gender: 'Masculina',
+    accent: 'Português do Brasil',
+    description: 'Voz masculina natural e clara. Arquivo menor.',
+    urls: RHASSPY('pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx'),
     sizeMB: 63,
     quality: 'Média (22 kHz)',
   },
   {
+    id: 'pt_BR-miro-high',
+    name: 'Miro',
+    gender: 'Masculina',
+    accent: 'Português do Brasil',
+    description: 'Voz masculina, alta qualidade.',
+    urls: OVOS('pipertts_pt-BR_miro', 'miro_pt-BR.onnx'),
+    sizeMB: 115,
+    quality: 'Alta (22 kHz)',
+    license: OVOS_LICENSE,
+  },
+  {
     id: 'pt_BR-edresson-low',
     name: 'Edresson',
-    description: 'Voz masculina em português do Brasil, mais leve. Boa opção para aparelhos mais lentos.',
-    path: 'pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx',
+    gender: 'Masculina',
+    accent: 'Português do Brasil',
+    description: 'Voz masculina mais leve, boa para aparelhos mais lentos.',
+    urls: RHASSPY('pt/pt_BR/edresson/low/pt_BR-edresson-low.onnx'),
     sizeMB: 63,
     quality: 'Baixa (16 kHz)',
+  },
+  {
+    id: 'pt_PT-dii-high',
+    name: 'Dii (Portugal)',
+    gender: 'Feminina',
+    accent: 'Português de Portugal',
+    description: 'Voz feminina com sotaque de Portugal, alta qualidade.',
+    urls: OVOS('pipertts_pt-PT_dii', 'dii_pt-PT.onnx'),
+    sizeMB: 115,
+    quality: 'Alta (22 kHz)',
+    license: OVOS_LICENSE,
   },
 ];
 
@@ -143,12 +184,12 @@ export async function downloadVoice(id, onProgress = () => {}, signal) {
   if (!v) throw new Error('Voz desconhecida.');
   if (!navigator.onLine) throw new Error('Sem internet. A voz precisa ser baixada uma vez (≈ 60 MB).');
   let lastErr;
-  for (const base of HF) {
+  for (const url of v.urls) {
     try {
-      const cfg = await fetchWithProgress(base + v.path + '.json', null, signal);
+      const cfg = await fetchWithProgress(url + '.json', null, signal);
       const config = JSON.parse(await cfg.blob.text());
-      const model = await fetchWithProgress(base + v.path, (n, loaded, total) => onProgress({ phase: 'voice', loaded, total: total || v.sizeMB * 1048576 }), signal);
-      await storeVoice({ id, name: v.name, description: v.description, custom: false }, model.blob, config);
+      const model = await fetchWithProgress(url, (n, loaded, total) => onProgress({ phase: 'voice', loaded, total: total || v.sizeMB * 1048576 }), signal);
+      await storeVoice({ id, name: v.name, description: v.description, gender: v.gender, accent: v.accent, custom: false }, model.blob, config);
       return;
     } catch (err) {
       if (err.name === 'AbortError') throw err;

@@ -147,7 +147,7 @@ try {
 
   step('Converter o EPUB');
   const t0 = Date.now();
-  await clickBtn('Converter em audiolivro');
+  await clickBtn('Gerar audiolivro');
   await page.waitForFunction(() => location.hash.startsWith('#/conversoes'));
   await page.waitForSelector('.conversion-card');
   await page.screenshot({ path: join(SHOTS, '02-conversoes.png') });
@@ -179,7 +179,7 @@ try {
   const pdfInfo = await page.evaluate(() => [...document.querySelectorAll('.cv-chapter .input')].map((i) => i.value));
   ok(pdfInfo.length >= 2, `PDF lido offline, capítulos pelo sumário: ${pdfInfo.join(' | ')}`);
   ok(await page.locator('.voice-card.is-active .voice-status.is-ready').count() === 1, 'voz disponível offline');
-  await clickBtn('Converter em audiolivro');
+  await clickBtn('Gerar audiolivro');
   await page.waitForFunction(() => location.hash.startsWith('#/conversoes'));
   await waitJobDone('O Livro em PDF', 300000);
   const pdfBook = await page.evaluate(() => [...window.AUDIOBOOK.state.books.values()].find((b) => /PDF/.test(b.title))?.chapterCount);
